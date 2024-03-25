@@ -19,12 +19,12 @@ try:
         filters=[["Image", "*.jpg", "*.jpeg", "*.png", "*.webp", "*.svg"]],
     )
     has_plyer = True
-except (ImportError, NameError):
+except ImportError:
     has_plyer = False
 try:
     from android.runnable import run_on_ui_thread
-    from android.storage import app_storage_path
-    from android.permissions import request_permissions, Permission
+    import android.permissions
+    from android.permissions import Permission
     from android.permissions import _RequestPermissionsManager
     _RequestPermissionsManager.register_callback()
     from .android_gallery import user_select_image
@@ -135,6 +135,7 @@ class Api():
         camera.take_picture(filename=filename, on_complete=self.on_camera)
 
     def on_image_selection(self, filename):
+        filename = filename[0] if isinstance(filename, list) else filename
         if filename is not None and os.path.exists(filename):
             self.image = filename
         else:
@@ -152,7 +153,7 @@ class Api():
         window = webview.windows[0]
         if window is not None:
             window.evaluate_js(
-                f"document.querySelector(`.file-label.selected`)?.classList.remove(`selected`);"
+                f"document.querySelector(`.image-label.selected`)?.classList.remove(`selected`);"
             )
             if input_id is not None and input_id in ("image", "camera"):
                 window.evaluate_js(
@@ -161,7 +162,7 @@ class Api():
 
     def request_permissions(self):
         if has_android:
-            request_permissions([
+            android.permissions.request_permissions([
                 Permission.CAMERA,
                 Permission.READ_EXTERNAL_STORAGE,
                 Permission.WRITE_EXTERNAL_STORAGE
