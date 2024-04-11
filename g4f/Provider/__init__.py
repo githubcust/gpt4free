@@ -21,6 +21,8 @@ from .ChatgptFree      import ChatgptFree
 from .ChatgptNext      import ChatgptNext
 from .ChatgptX         import ChatgptX
 from .DeepInfra        import DeepInfra
+from .DeepInfraImage   import DeepInfraImage
+from .DuckDuckGo       import DuckDuckGo
 from .FlowGpt          import FlowGpt
 from .FreeChatgpt      import FreeChatgpt
 from .FreeGpt          import FreeGpt
@@ -33,9 +35,12 @@ from .HuggingFace      import HuggingFace
 from .Koala            import Koala
 from .Liaobots         import Liaobots
 from .Llama2           import Llama2
+from .Local            import Local
 from .PerplexityLabs   import PerplexityLabs
 from .Pi               import Pi
+from .ReplicateImage   import ReplicateImage
 from .Vercel           import Vercel
+from .WhiteRabbitNeo   import WhiteRabbitNeo
 from .You              import You
 
 import sys
