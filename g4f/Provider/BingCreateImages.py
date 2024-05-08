@@ -13,12 +13,19 @@ from .bing.create_images import create_images, create_session, get_cookies_from_
 
 class BingCreateImages(AsyncGeneratorProvider, ProviderModelMixin):
     label = "Microsoft Designer"
+    parent = "Bing"
     url = "https://www.bing.com/images/create"
     working = True
+    needs_auth = True
+    image_models = ["dall-e"]
 
-    def __init__(self, cookies: Cookies = None, proxy: str = None) -> None:
-        self.cookies: Cookies = cookies
-        self.proxy: str = proxy
+    def __init__(self, cookies: Cookies = None, proxy: str = None, api_key: str = None) -> None:
+        if api_key is not None:
+            if cookies is None:
+                cookies = {}
+            cookies["_U"] = api_key
+        self.cookies = cookies
+        self.proxy = proxy
 
     @classmethod
     async def create_async_generator(
@@ -30,9 +37,7 @@ class BingCreateImages(AsyncGeneratorProvider, ProviderModelMixin):
         proxy: str = None,
         **kwargs
     ) -> AsyncResult:
-        if api_key is not None:
-            cookies = {"_U": api_key}
-        session = BingCreateImages(cookies, proxy)
+        session = BingCreateImages(cookies, proxy, api_key)
         yield await session.create_async(messages[-1]["content"])
 
     def create(self, prompt: str) -> Iterator[Union[ImageResponse, str]]:
@@ -46,7 +51,7 @@ class BingCreateImages(AsyncGeneratorProvider, ProviderModelMixin):
             Generator[str, None, None]: The final output as markdown formatted string with images.
         """
         cookies = self.cookies or get_cookies(".bing.com", False)
-        if "_U" not in cookies:
+        if cookies is None or "_U" not in cookies:
             login_url = os.environ.get("G4F_LOGIN_URL")
             if login_url:
                 yield f"Please login: [Bing]({login_url})\n\n"
@@ -67,7 +72,7 @@ class BingCreateImages(AsyncGeneratorProvider, ProviderModelMixin):
             str: Markdown formatted string with images.
         """
         cookies = self.cookies or get_cookies(".bing.com", False)
-        if "_U" not in cookies:
+        if cookies is None or "_U" not in cookies:
             raise MissingAuthError('Missing "_U" cookie')
         proxy = self.proxy or os.environ.get("G4F_PROXY")
         async with create_session(cookies, proxy) as session:

@@ -210,7 +210,9 @@ body {
 
 .conversations .convo .fa-ellipsis-vertical {
     position: absolute;
-    right: 14px;
+    right: 8px;
+    width: 14px;
+    text-align: center;
 }
 
 .conversations .convo .choise {
@@ -224,6 +226,10 @@ body {
     cursor: pointer;
 }
 
+.bottom_buttons i {
+    width: 14px;
+}
+
 .convo-title {
     color: var(--colour-3);
     font-size: 14px;
@@ -232,9 +238,17 @@ body {
     overflow: hidden; 
     white-space: nowrap;
     margin-right: 10px;
+    background-color: transparent;
+    border: 0;
+    width: 100%;
 }
 
-.convo-title .datetime {
+.convo-title:focus {
+    outline: 1px solid var(--colour-3) !important;
+}
+
+.convo .datetime {
+    white-space: nowrap;
     font-size: 10px;
 }
 
@@ -602,7 +616,8 @@ label[for="camera"] {
     width: 100%;
 }
 
-.buttons input:checked+label:after {
+.buttons input:checked+label:after,
+.settings input:checked+label:after {
     left: calc(100% - 5px - 20px);
 }
 
@@ -837,11 +852,20 @@ ul {
     transform: rotate(360deg);
 }
 
+.settings h3 {
+    padding-left: 10px;
+    padding-top: 10px;
+}
+
 @media screen and (max-width: 990px) {
     .conversations {
         display: none;
         width: 100%;
         max-width: none;
+    }
+
+    .settings h3 {
+        padding-left: 50px;
     }
 
     .buttons {
@@ -880,7 +904,7 @@ a:-webkit-any-link {
 
     resize: vertical;
     max-height: 200px;
-    min-height: 80px;
+    min-height: 100px;
 }
 
 /* style for hljs copy */
@@ -1099,10 +1123,10 @@ a:-webkit-any-link {
     width: 100%;
     display: flex;
     flex-direction: column;
+    overflow: auto;
 }
 
 .settings .paper {
-    overflow: auto;
     flex-direction: column;
     min-width: 400px;
 }
