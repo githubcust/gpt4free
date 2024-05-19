@@ -24,6 +24,7 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
     image_models = ["dall-e"]
     models = [
         default_model,
+        "gpt-4o",
         "gpt-4",
         "gpt-4-turbo",
         "claude-instant",
@@ -42,7 +43,7 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
         *image_models
     ]
     model_aliases = {
-        "claude-v2": "claude-2"
+        "claude-v2": "claude-2",
     }
     _cookies = None
     _cookies_used = 0
@@ -99,7 +100,10 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                 "selectedChatMode": chat_mode,
             }
             if chat_mode == "custom":
-                params["selectedAIModel"] = model.replace("-", "_")
+                if debug.logging:
+                    print(f"You model: {model}")
+                params["selectedAiModel"] = model.replace("-", "_")
+
             async with (session.post if chat_mode == "default" else session.get)(
                 f"{cls.url}/api/streamingSearch",
                 data=data,
@@ -114,9 +118,9 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                     elif line.startswith(b'data: '):
                         if event in ["youChatUpdate", "youChatToken"]:
                             data = json.loads(line[6:])
-                        if event == "youChatToken" and event in data:
+                        if event == "youChatToken" and event in data and data[event]:
                             yield data[event]
-                        elif event == "youChatUpdate" and "t" in data and data["t"] is not None:
+                        elif event == "youChatUpdate" and "t" in data and data["t"]:
                             if chat_mode == "create":
                                 match = re.search(r"!\[(.+?)\]\((.+?)\)", data["t"])
                                 if match:
