@@ -11,6 +11,7 @@ class Pi(AbstractProvider):
     working         = True
     supports_stream = True
     _session = None
+    default_model = "pi"
 
     @classmethod
     def create_completion(
@@ -21,6 +22,7 @@ class Pi(AbstractProvider):
         proxy: str = None,
         timeout: int = 180,
         conversation_id: str = None,
+        webdriver: WebDriver = None,
         **kwargs
     ) -> CreateResult:
         if cls._session is None:
