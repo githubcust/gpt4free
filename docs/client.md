@@ -62,7 +62,7 @@ client = Client(
 **Here’s an improved example of creating chat completions:**
 ```python
 response = client.chat.completions.create(
-    model="gpt-3.5-turbo",
+    model="gpt-4o-mini",
     messages=[
         {
             "role": "user",
@@ -104,7 +104,7 @@ from g4f.client import Client
 client = Client()
 
 response = client.chat.completions.create(
-    model="gpt-3.5-turbo",
+    model="gpt-4o-mini",
     messages=[
         {
             "role": "user",
@@ -265,7 +265,9 @@ from g4f.client import Client
 image = requests.get("https://raw.githubusercontent.com/xtekky/gpt4free/refs/heads/main/docs/cat.jpeg", stream=True).raw
 # Or: image = open("docs/cat.jpeg", "rb")
 
-client = Client()
+client = Client(
+    provider=CopilotAccount
+)
 
 response = client.chat.completions.create(
     model=g4f.models.default,
@@ -275,7 +277,6 @@ response = client.chat.completions.create(
             "content": "What are on this image?"
         }
     ],
-    provider=g4f.Provider.Bing,
     image=image
     # Add any other necessary parameters
 )

@@ -1,4 +1,5 @@
 
+
 ![248433934-7886223b-c1d1-4260-82aa-da5741f303bb](https://github.com/xtekky/gpt4free/assets/98614666/ea012c87-76e0-496a-8ac4-e2de090cc6c9)
 
 <a href="https://trendshift.io/repositories/1692" target="_blank"><img src="https://trendshift.io/api/badge/repositories/1692" alt="xtekky%2Fgpt4free | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -20,7 +21,7 @@
 > <sup><strong>Stats:</strong></sup> [![Downloads](https://static.pepy.tech/badge/g4f)](https://pepy.tech/project/g4f) [![Downloads](https://static.pepy.tech/badge/g4f/month)](https://pepy.tech/project/g4f)
 
 ```sh
-pip install -U g4f
+pip install -U g4f[all]
 ```
 
 ```sh
@@ -28,29 +29,20 @@ docker pull hlohaus789/g4f
 ```
 
 ## 🆕 What's New
-   - **For comprehensive details on new features and updates, please refer to our [Releases](https://github.com/xtekky/gpt4free/releases) page**
+   - **For comprehensive details on new features and updates, please refer to our** [Releases](https://github.com/xtekky/gpt4free/releases) **page**
    - **Installation Guide for Windows (.exe):** 💻 [Installation Guide for Windows (.exe)](#installation-guide-for-windows-exe)
    - **Join our Telegram Channel:** 📨 [telegram.me/g4f_channel](https://telegram.me/g4f_channel)
-   - **Join our Discord Group:** 💬 [discord.gg/XfybzPXPH5](https://discord.gg/5E39JUWUFa)
+   - **Join our Discord Group:** 💬🆕️ [discord.gg/vE7gCvss](https://discord.gg/vE7gCvss)
 
 
 ## 🔻 Site Takedown
 
 Is your site on this repository and you want to take it down? Send an email to takedown@g4f.ai with proof it is yours and it will be removed as fast as possible. To prevent reproduction please secure your API. 😉
 
-## 🚀 Feedback and Todo
-**You can always leave some feedback here:** https://forms.gle/FeWV9RLEedfdkmFN6
+## 🚀 Preview
+**Take a look at our GUI on the mobile device. We connect to ChatGPT and generate an image.** 
 
-**As per the survey, here is a list of improvements to come**
-   - [x] Update the repository to include the new openai library syntax (ex: `Openai()` class) | completed, use `g4f.client.Client`
-   - [ ] Golang implementation
-   - [ ] 🚧 Improve Documentation (in /docs & Guides, Howtos, & Do video tutorials)
-   - [x] Improve the provider status list & updates
-   - [ ] Tutorials on how to reverse sites to write your own wrapper (PoC only ofc)
-   - [x] Improve the Bing wrapper. (Wait and Retry or reuse conversation)
-   - [ ] 🚧 Write a standard provider performance test to improve the stability
-   - [ ] Potential support and development of local models
-   - [ ] 🚧 Improve compatibility and error handling
+[![Preview image](https://github.com/user-attachments/assets/9da24a87-a591-4da4-a80f-8fc7c222c92f)](https://github.com/user-attachments/assets/56c02389-61b1-4849-be7d-50b173b84ce6)
 
 ## 📚 Table of Contents
    - [🆕 What's New](#-whats-new)
@@ -70,6 +62,9 @@ Is your site on this repository and you want to take it down? Send an email to t
       - [Interference API](#interference-api)
       - [Local Inference](docs/local.md)
       - [Configuration](#configuration)
+      -  [Full Documentation for Python API](#full-documentation-for-python-api)
+         - [Client API from G4F](docs/client.md)
+         - [AsyncClient API from G4F](docs/async_client.md)
    - [🚀 Providers and Models](docs/providers-and-models.md)
    - [🔗 Powered by gpt4free](#-powered-by-gpt4free)
    - [🤝 Contribute](#-contribute)
@@ -101,9 +96,23 @@ docker run \
   hlohaus789/g4f:latest
 ```
 
+To run the slim docker image. Use this command:
+
+```bash
+docker run \
+  -p 1337:1337 \
+  -v ${PWD}/har_and_cookies:/app/har_and_cookies \
+  -v ${PWD}/generated_images:/app/generated_images \
+  hlohaus789/g4f:latest-slim \
+  rm -r -f /app/g4f/ \
+  && pip install -U g4f[slim] \
+  && python -m g4f.cli api --gui --debug
+```
+It also updates the `g4f` package at startup and installs any new required dependencies.
+
 3. **Access the Client:**
 
-   - To use the included client, navigate to: [http://localhost:8080/chat/](http://localhost:8080/chat/)
+   - To use the included client, navigate to: [http://localhost:8080/chat/](http://localhost:8080/chat/) or [http://localhost:1337/chat/](http://localhost:1337/chat/)
    - Or set the API base for your client to: [http://localhost:1337/v1](http://localhost:1337/v1)
 
 4. **(Optional) Provider Login:**
@@ -115,7 +124,7 @@ To ensure the seamless operation of our application, please follow the instructi
 
 ### Installation Steps
 
-1. **Download the Application**: Visit our [releases page](https://github.com/xtekky/gpt4free/releases/tag/0.3.1.7) and download the most recent version of the application, named `g4f.exe.zip`.
+1. **Download the Application**: Visit our [releases page](https://github.com/xtekky/gpt4free/releases/tag/0.3.4.2) and download the most recent version of the application, named `g4f.exe.zip`.
 2. **File Placement**: After downloading, locate the `.zip` file in your Downloads folder. Unpack it to a directory of your choice on your system, then execute the `g4f.exe` file to run the app.
 3. **Open GUI**: The app starts a web server with the GUI. Open your favorite browser and navigate to `http://localhost:8080/chat/` to access the application interface.
 4. **Firewall Configuration (Hotfix)**: Upon installation, it may be necessary to adjust your Windows Firewall settings to allow the application to operate correctly. To do this, access your Windows Firewall settings and allow the application.
@@ -166,7 +175,7 @@ from g4f.client import Client
 
 client = Client()
 response = client.chat.completions.create(
-    model="gpt-3.5-turbo",
+    model="gpt-4o-mini",
     messages=[{"role": "user", "content": "Hello"}],
     # Add any other necessary parameters
 )
@@ -183,7 +192,7 @@ from g4f.client import Client
 
 client = Client()
 response = client.images.generate(
-    model="dall-e-3",
+    model="flux",
     prompt="a white siamese cat",
     # Add any other necessary parameters
 )
@@ -194,10 +203,13 @@ print(f"Generated image URL: {image_url}")
 
 [![Image with cat](/docs/cat.jpeg)](docs/client.md)
 
-**Full Documentation for Python API**
-   - **Async Client API from G4F:** [/docs/async_client](docs/async_client.md)
-   - **Client API like the OpenAI Python library:** [/docs/client](docs/client.md)
-   - **Legacy API with python modules:** [/docs/legacy](docs/legacy.md)
+#### **Full Documentation for Python API**
+   - **New:**
+      - **Client API from G4F:** [/docs/client](docs/client.md)
+      - **AsyncClient API from G4F:** [/docs/async_client](docs/async_client.md)
+   
+   - **Legacy:**
+      - **Legacy API with python modules:** [/docs/legacy](docs/legacy.md)
 
 #### Web UI
 **To start the web interface, type the following codes in python:**
@@ -288,22 +300,20 @@ To utilize the OpenaiChat provider, a .har file is required from https://chatgpt
 
 ##### Storing the .HAR File
 
-- Place the exported .har file in the `./har_and_cookies` directory if you are using Docker. Alternatively, you can store it in any preferred location within your current working directory.
+- Place the exported .har file in the `./har_and_cookies` directory if you are using Docker. Alternatively, if you are using Python from a terminal, you can store it in a `./har_and_cookies` directory within your current working directory.
 
-Note: Ensure that your .har file is stored securely, as it may contain sensitive information.
+> **Note:** Ensure that your .har file is stored securely, as it may contain sensitive information.
 
 #### Using Proxy
 
 If you want to hide or change your IP address for the providers, you can set a proxy globally via an environment variable:
 
-- On macOS and Linux:
-
+**- On macOS and Linux:**
 ```bash
 export G4F_PROXY="http://host:port"
 ```
 
-- On Windows:
-
+**- On Windows:**
 ```bash
 set G4F_PROXY=http://host:port
 ```
@@ -770,10 +780,10 @@ set G4F_PROXY=http://host:port
 We welcome contributions from the community. Whether you're adding new providers or features, or simply fixing typos and making small improvements, your input is valued. Creating a pull request is all it takes – our co-pilot will handle the code review process. Once all changes have been addressed, we'll merge the pull request into the main branch and release the updates at a later time.
 
 ###### Guide: How do i create a new Provider?
-   - Read: [Create Provider Guide](docs/guides/create_provider.md)
+   - **Read:** [Create Provider Guide](docs/guides/create_provider.md)
 
 ###### Guide: How can AI help me with writing code?
-   - Read: [AI Assistance Guide](docs/guides/help_me.md)
+   - **Read:** [AI Assistance Guide](docs/guides/help_me.md)
 
 ## 🙌 Contributors
 A list of all contributors is available [here](https://github.com/xtekky/gpt4free/graphs/contributors)
