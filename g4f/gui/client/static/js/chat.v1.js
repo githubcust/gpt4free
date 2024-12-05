@@ -44,6 +44,9 @@ appStorage = window.localStorage || {
     removeItem: (key) => delete self[key],
     length: 0
 }
+
+appStorage.getItem("darkMode") == "false" ? document.body.classList.add("white") : null;
+
 let markdown_render = () => null;
 if (window.markdownit) {
     const markdown = window.markdownit();
@@ -56,6 +59,7 @@ if (window.markdownit) {
             .replaceAll('<code>', '<code class="language-plaintext">')
     }
 }
+
 function filter_message(text) {
     return text.replaceAll(
         /<!-- generated images start -->[\s\S]+<!-- generated images end -->/gm, ""
@@ -81,7 +85,52 @@ function fallback_clipboard (text) {
     document.body.removeChild(textBox);
 }
 
+const iframe_container = Object.assign(document.createElement("div"), {
+    className: "hljs-iframe-container hidden",
+});
+const iframe = Object.assign(document.createElement("iframe"), {
+    className: "hljs-iframe",
+});
+iframe_container.appendChild(iframe);
+const iframe_close = Object.assign(document.createElement("button"), {
+    className: "hljs-iframe-close",
+    innerHTML: '<i class="fa-regular fa-x"></i>',
+});
+iframe_close.onclick = () => iframe_container.classList.add("hidden");
+iframe_container.appendChild(iframe_close);
+chat.appendChild(iframe_container);
+
+class HtmlRenderPlugin {
+    constructor(options = {}) {
+        self.hook = options.hook;
+        self.callback = options.callback
+    }
+    "after:highlightElement"({
+        el,
+        text
+    }) {
+        if (!el.classList.contains("language-html")) {
+            return;
+        }
+        let button = Object.assign(document.createElement("button"), {
+            innerHTML: '<i class="fa-regular fa-folder-open"></i>',
+            className: "hljs-iframe-button",
+        });
+        el.parentElement.appendChild(button);
+        button.onclick = async () => {
+            let newText = text;
+            if (hook && typeof hook === "function") {
+                newText = hook(text, el) || text
+            }
+            iframe.src = `data:text/html;charset=utf-8,${encodeURIComponent(newText)}`;
+            iframe_container.classList.remove("hidden");
+            if (typeof callback === "function") return callback(newText, el);
+        }
+    }
+}
+
 hljs.addPlugin(new CopyButtonPlugin());
+hljs.addPlugin(new HtmlRenderPlugin())
 let typesetPromise = Promise.resolve();
 const highlight = (container) => {
     container.querySelectorAll('code:not(.hljs').forEach((el) => {
@@ -371,16 +420,17 @@ document.querySelector(".media_player .fa-x").addEventListener("click", ()=>{
 });
 
 const prepare_messages = (messages, message_index = -1) => {
-    if (message_index >= 0) {
-        messages = messages.filter((_, index) => message_index >= index);
-    }
-
-    // Removes none user messages at end
-    let last_message;
-    while (last_message = messages.pop()) {
-        if (last_message["role"] == "user") {
-            messages.push(last_message);
-            break;
+    if (message_index != null) {
+        if (message_index >= 0) {
+            messages = messages.filter((_, index) => message_index >= index);
+        }
+        // Removes none user messages at end
+        let last_message;
+        while (last_message = messages.pop()) {
+            if (last_message["role"] == "user") {
+                messages.push(last_message);
+                break;
+            }
         }
     }
 
@@ -1015,6 +1065,7 @@ async function hide_sidebar() {
     sidebar_button.classList.remove("rotated");
     settings.classList.add("hidden");
     chat.classList.remove("hidden");
+    log_storage.classList.add("hidden");
     if (window.location.pathname == "/menu/" || window.location.pathname == "/settings/") {
         history.back();
     }
@@ -1132,31 +1183,6 @@ const say_hello = async () => {
     }
 }
 
-// Theme storage for recurring viewers
-const storeTheme = function (theme) {
-    appStorage.setItem("theme", theme);
-};
-
-// set theme when visitor returns
-const setTheme = function () {
-    const activeTheme = appStorage.getItem("theme");
-    colorThemes.forEach((themeOption) => {
-        if (themeOption.id === activeTheme) {
-            themeOption.checked = true;
-        }
-    });
-    // fallback for no :has() support
-    document.documentElement.className = activeTheme;
-};
-
-colorThemes.forEach((themeOption) => {
-    themeOption.addEventListener("click", () => {
-        storeTheme(themeOption.id);
-        // fallback for no :has() support
-        document.documentElement.className = themeOption.id;
-    });
-});
-
 function count_tokens(model, text) {
     if (model) {
         if (window.llamaTokenizer)
@@ -1223,7 +1249,6 @@ window.addEventListener('pywebviewready', async function() {
 });
 
 async function on_load() {
-    setTheme();
     count_input();
 
     if (/\/chat\/.+/.test(window.location.href)) {
@@ -1240,8 +1265,7 @@ async function on_api() {
         if (prompt_lock) return;
 
         // If not mobile
-        if (!window.matchMedia("(pointer:coarse)").matches)
-        if (evt.keyCode === 13 && !evt.shiftKey) {
+        if (!window.matchMedia("(pointer:coarse)").matches && evt.keyCode === 13 && !evt.shiftKey) {
             evt.preventDefault();
             console.log("pressed enter");
             prompt_lock = true;
@@ -1313,9 +1337,6 @@ async function on_api() {
     }
     const darkMode = document.getElementById("darkMode");
     if (darkMode) {
-        if (!darkMode.checked) {
-            document.body.classList.add("white");
-        }
         darkMode.addEventListener('change', async (event) => {
             if (event.target.checked) {
                 document.body.classList.remove("white");
