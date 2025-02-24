@@ -35,7 +35,7 @@ jobs:
 
       - name: 构建Docker镜像
         run: |
-          docker build ./docker -t ghcr.io/$REPO_NAME_LOWER:latest
+          docker build ./ -t ghcr.io/$REPO_NAME_LOWER:latest
         shell: bash
 
       - name: 推送Docker镜像
