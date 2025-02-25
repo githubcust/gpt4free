@@ -1,36 +1,55 @@
-FROM python:slim-bookworm
+FROM selenium/node-chrome
 
 ARG G4F_VERSION
-ARG G4F_USER=g4f
-ARG G4F_USER_ID=1000
-
 ENV G4F_VERSION $G4F_VERSION
-ENV G4F_USER $G4F_USER
-ENV G4F_USER_ID $G4F_USER_ID
+
+ENV SE_SCREEN_WIDTH 1850
 ENV G4F_DIR /app
+ENV G4F_LOGIN_URL http://localhost:7900/
 
-RUN apt-get update && apt-get upgrade -y \
-  && apt-get install -y git \
-# Add user and user group
-  && groupadd -g $G4F_USER_ID $G4F_USER \
-  && useradd -rm -G sudo -u $G4F_USER_ID -g $G4F_USER_ID $G4F_USER \
-  && echo "${G4F_USER}:${G4F_USER}" | chpasswd \
-  && python -m pip install --upgrade pip \
-  && apt-get clean \
-  && rm --recursive --force /var/lib/apt/lists/* /tmp/* /var/tmp/*
+USER root
 
-USER $G4F_USER_ID
+#  If docker compose, install git
+RUN if [ "$G4F_VERSION" = "" ] ; then \
+  apt-get -qqy update && \
+  apt-get -qqy install git \
+  ; fi
+
+# Install Python3, pip, remove OpenJDK 11, clean up
+RUN apt-get -qqy update \
+  && apt-get -qqy upgrade \
+  && apt-get -qyy autoremove \
+  && apt-get -qqy install python3 python-is-python3 pip \
+  && apt-get -qyy remove openjdk-11-jre-headless \
+  && apt-get -qyy autoremove \
+  && apt-get -qyy clean \
+  && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+
+# Update entrypoint
+COPY docker/supervisor.conf /etc/supervisor/conf.d/selenium.conf
+COPY docker/supervisor-api.conf /etc/supervisor/conf.d/api.conf
+
+# Change background image
+COPY docker/background.png /usr/share/images/fluxbox/ubuntu-light.png
+
+# Add user, fix permissions
+RUN chown "${SEL_UID}:${SEL_GID}" $HOME/.local
+
+# Switch user
+USER $SEL_UID
+
+# Set the working directory in the container.
 WORKDIR $G4F_DIR
 
-ENV HOME /home/$G4F_USER
-ENV PATH "${HOME}/.local/bin:${PATH}"
-
-# Create app dir and copy the project's requirements file into it
-RUN mkdir -p $G4F_DIR
-COPY requirements-slim.txt $G4F_DIR
+# Copy the project's requirements file into the container.
+COPY requirements.txt $G4F_DIR
 
 # Upgrade pip for the latest features and install the project's Python dependencies.
-RUN pip install --no-cache-dir -r requirements-slim.txt
+RUN pip install --break-system-packages --upgrade pip \
+  && pip install --break-system-packages -r requirements.txt
 
 # Copy the entire package into the container.
-ADD --chown=$G4F_USER:$G4F_USER g4f $G4F_DIR/g4f
+ADD --chown=$SEL_UID:$SEL_GID g4f $G4F_DIR/g4f
+
+# Expose ports
+EXPOSE 8080 7900
