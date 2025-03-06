@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import random
 import requests
 from urllib.parse import quote_plus
@@ -14,7 +13,8 @@ from ..image import to_data_uri
 from ..errors import ModelNotFoundError
 from ..requests.raise_for_status import raise_for_status
 from ..requests.aiohttp import get_connector
-from ..providers.response import ImageResponse, ImagePreview, FinishReason, Usage, Reasoning
+from ..providers.response import ImageResponse, ImagePreview, FinishReason, Usage
+from .. import debug
 
 DEFAULT_HEADERS = {
     'Accept': '*/*',
@@ -42,7 +42,7 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
     text_models = [default_model]
     image_models = [default_image_model]
     extra_image_models = ["flux-pro", "flux-dev", "flux-schnell", "midjourney", "dall-e-3"]
-    vision_models = [default_vision_model, "gpt-4o-mini"]
+    vision_models = [default_vision_model, "gpt-4o-mini", "o1-mini"]
     extra_text_models = ["claude", "claude-email", "deepseek-reasoner", "deepseek-r1"] + vision_models
     _models_loaded = False
     model_aliases = {
@@ -53,16 +53,14 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
         "qwen-2.5-coder-32b": "qwen-coder",
         "llama-3.3-70b": "llama",
         "mistral-nemo": "mistral",
-        "gpt-4o-mini": "rtist",
         "gpt-4o": "searchgpt",
-        "gpt-4o-mini": "p1",
         "deepseek-chat": "claude-hybridspace",
         "llama-3.1-8b": "llamalight",
         "gpt-4o-vision": "gpt-4o",
         "gpt-4o-mini-vision": "gpt-4o-mini",
-        "gpt-4o-mini": "claude",
         "deepseek-chat": "claude-email",
         "deepseek-r1": "deepseek-reasoner",
+        "gemini-2.0": "gemini",
         "gemini-2.0-flash": "gemini",
         "gemini-2.0-flash-thinking": "gemini-thinking",
         
@@ -76,9 +74,11 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
             try:
                 # Update of image models
                 image_response = requests.get("https://image.pollinations.ai/models")
-                image_response.raise_for_status()
-                new_image_models = image_response.json()
-                
+                if image_response.ok:
+                    new_image_models = image_response.json()
+                else:
+                    new_image_models = []
+
                 # Combine models without duplicates
                 all_image_models = (
                     cls.image_models +  # Already contains the default
@@ -114,8 +114,8 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
                     cls.text_models = [cls.default_model]
                 if not cls.image_models:
                     cls.image_models = [cls.default_image_model]
-                raise RuntimeError(f"Failed to fetch models: {e}") from e
-            
+                debug.error(f"Failed to fetch models: {e}")
+
         return cls.text_models + cls.image_models
 
     @classmethod
@@ -208,10 +208,8 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
             "enhance": str(enhance).lower(),
             "safe": str(safe).lower()
         }
-        params = {k: v for k, v in params.items() if v is not None}
-        query = "&".join(f"{k}={quote_plus(v)}" for k, v in params.items())
-        prefix = f"{model}_{seed}" if seed is not None else model
-        url = f"{cls.image_api_endpoint}prompt/{prefix}_{quote_plus(prompt)}?{query}"
+        query = "&".join(f"{k}={quote_plus(v)}" for k, v in params.items() if v is not None)
+        url = f"{cls.image_api_endpoint}prompt/{quote_plus(prompt)}?{query}"
         yield ImagePreview(url, prompt)
 
         async with ClientSession(headers=DEFAULT_HEADERS, connector=get_connector(proxy=proxy)) as session:
@@ -266,7 +264,8 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
                 "seed": seed,
                 "cache": cache
             })
-            
+            if "gemini" in model:
+                data.pop("seed")
             async with session.post(cls.text_api_endpoint, json=data) as response:
                 await raise_for_status(response)
                 result = await response.json()

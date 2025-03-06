@@ -20,6 +20,7 @@ fallback_models = text_models + image_models
 model_aliases = {
     ### Chat ###
     "qwen-2.5-72b": "Qwen/Qwen2.5-Coder-32B-Instruct",
+    "llama-3": "meta-llama/Llama-3.3-70B-Instruct",
     "llama-3.3-70b": "meta-llama/Llama-3.3-70B-Instruct",
     "command-r-plus": "CohereForAI/c4ai-command-r-plus-08-2024",
     "deepseek-r1": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
@@ -47,3 +48,8 @@ extra_models = [
 ]
 default_vision_model = "meta-llama/Llama-3.2-11B-Vision-Instruct"
 vision_models = [default_vision_model, "Qwen/Qwen2-VL-7B-Instruct"]
+llama_models = {
+    "name": "llama-3",
+    "text": "meta-llama/Llama-3.3-70B-Instruct",
+    "vision": "meta-llama/Llama-3.2-11B-Vision-Instruct",
+}
