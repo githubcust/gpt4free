@@ -13,13 +13,22 @@ from ..image import to_data_uri
 from ..errors import ModelNotFoundError
 from ..requests.raise_for_status import raise_for_status
 from ..requests.aiohttp import get_connector
-from ..providers.response import ImageResponse, ImagePreview, FinishReason, Usage
+from ..providers.response import ImageResponse, ImagePreview, FinishReason, Usage, Audio
 from .. import debug
 
 DEFAULT_HEADERS = {
-    'Accept': '*/*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    "accept": "*/*",
+    'accept-language': 'en-US,en;q=0.9',
+    "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+    "priority": "u=1, i",
+    "sec-ch-ua": "\"Not(A:Brand\";v=\"99\", \"Google Chrome\";v=\"133\", \"Chromium\";v=\"133\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Linux\"",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-site",
+    "referer": "https://pollinations.ai/",
+    "origin": "https://pollinations.ai",
 }
 
 class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
@@ -32,7 +41,8 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
     supports_message_history = True
 
     # API endpoints
-    text_api_endpoint = "https://text.pollinations.ai/openai"
+    text_api_endpoint = "https://text.pollinations.ai"
+    openai_endpoint = "https://text.pollinations.ai/openai"
     image_api_endpoint = "https://image.pollinations.ai/"
 
     # Models configuration
@@ -43,23 +53,21 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
     image_models = [default_image_model]
     extra_image_models = ["flux-pro", "flux-dev", "flux-schnell", "midjourney", "dall-e-3"]
     vision_models = [default_vision_model, "gpt-4o-mini", "o1-mini"]
-    extra_text_models = ["claude", "claude-email", "deepseek-reasoner", "deepseek-r1"] + vision_models
+    extra_text_models = vision_models
     _models_loaded = False
     model_aliases = {
         ### Text Models ###
         "gpt-4o-mini": "openai",
         "gpt-4": "openai-large",
         "gpt-4o": "openai-large",
+        "o1-mini": "openai-reasoning",
         "qwen-2.5-coder-32b": "qwen-coder",
         "llama-3.3-70b": "llama",
         "mistral-nemo": "mistral",
-        "gpt-4o": "searchgpt",
-        "deepseek-chat": "claude-hybridspace",
+        "gpt-4o-mini": "searchgpt",
         "llama-3.1-8b": "llamalight",
-        "gpt-4o-vision": "gpt-4o",
-        "gpt-4o-mini-vision": "gpt-4o-mini",
-        "deepseek-chat": "claude-email",
-        "deepseek-r1": "deepseek-reasoner",
+        "llama-3.3-70b": "llama-scaleway",
+        "phi-4": "phi",
         "gemini-2.0": "gemini",
         "gemini-2.0-flash": "gemini",
         "gemini-2.0-flash-thinking": "gemini-thinking",
@@ -90,10 +98,17 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
                 # Update of text models
                 text_response = requests.get("https://text.pollinations.ai/models")
                 text_response.raise_for_status()
+                models = text_response.json()
                 original_text_models = [
                     model.get("name") 
-                    for model in text_response.json()
+                    for model in models
+                    if model.get("type") == "chat"
                 ]
+                cls.audio_models = {
+                    model.get("name"): model.get("voices")
+                    for model in models
+                    if model.get("audio")
+                }
                 
                 # Combining text models
                 combined_text = (
@@ -266,19 +281,33 @@ class PollinationsAI(AsyncGeneratorProvider, ProviderModelMixin):
             })
             if "gemini" in model:
                 data.pop("seed")
-            async with session.post(cls.text_api_endpoint, json=data) as response:
+            if model in cls.audio_models:
+                #data["voice"] = random.choice(cls.audio_models[model])
+                url = cls.text_api_endpoint
+            else:
+                url = cls.openai_endpoint
+            async with session.post(url, json=data) as response:
                 await raise_for_status(response)
+                if response.headers["content-type"] == "audio/mpeg":
+                    yield Audio(await response.read())
+                    return
+                elif response.headers["content-type"].startswith("text/plain"):
+                    yield await response.text()
+                    return
                 result = await response.json()
                 choice = result["choices"][0]
                 message = choice.get("message", {})
                 content = message.get("content", "")
-                
+
+                if "</think>" in content and "<think>" not in content:
+                    yield "<think>"
+
                 if content:
                     yield content.replace("\\(", "(").replace("\\)", ")")
-                
+
                 if "usage" in result:
                     yield Usage(**result["usage"])
-                
+
                 finish_reason = choice.get("finish_reason")
                 if finish_reason:
                     yield FinishReason(finish_reason)

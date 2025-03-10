@@ -80,8 +80,8 @@ if (window.markdownit) {
             .replaceAll('<code>', '<code class="language-plaintext">')
             .replaceAll('&lt;i class=&quot;', '<i class="')
             .replaceAll('&quot;&gt;&lt;/i&gt;', '"></i>')
-            .replaceAll('&lt;iframe type=&quot;text/html&quot; src=&quot;', '<iframe type="text/html" frameborder="0" src="')
-            .replaceAll('&quot;&gt;&lt;/iframe&gt;', `?enablejsapi=1&origin=${new URL(location.href).origin}` + '"></iframe>')
+            .replaceAll('&lt;iframe type=&quot;text/html&quot; src=&quot;', '<iframe type="text/html" frameborder="0" allow="fullscreen" src="')
+            .replaceAll('&quot;&gt;&lt;/iframe&gt;', `?enablejsapi=1&origin=${new URL(location.href).origin}"></iframe>`)
     }
 }
 
@@ -305,17 +305,17 @@ const register_message_buttons = async () => {
 
     message_box.querySelectorAll(".message .fa-file-export").forEach(async (el) => el.addEventListener("click", async () => {
         const elem = window.document.createElement('a');
-        let filename = `chat ${new Date().toLocaleString()}.md`.replaceAll(":", "-");
+        let filename = `chat ${new Date().toLocaleString()}.txt`.replaceAll(":", "-");
         const conversation = await get_conversation(window.conversation_id);
         let buffer = "";
         conversation.items.forEach(message => {
             if (message.reasoning) {
                 buffer += render_reasoning_text(message.reasoning);
             }
-            buffer += `${message.role == 'user' ? 'User' : 'Assistant'}: ${message.content.trim()}\n\n\n`;
+            buffer += `${message.role == 'user' ? 'User' : 'Assistant'}: ${message.content.trim()}\n\n`;
         });
         var download = document.getElementById("download");
-        download.setAttribute("href", "data:text/markdown;charset=utf-8," + encodeURIComponent(buffer.trim()));
+        download.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(buffer.trim()));
         download.setAttribute("download", filename);
         download.click();
         el.classList.add("clicked");
@@ -440,7 +440,7 @@ const handle_ask = async (do_ask_gpt = true) => {
             <i class="fa-solid fa-xmark"></i>
             <i class="fa-regular fa-phone-arrow-up-right"></i>
         </div>
-        <div class="content" id="user_${message_id}"> 
+        <div class="content"> 
             <div class="content_inner">
             ${markdown_render(message)}
             </div>
@@ -465,7 +465,7 @@ const handle_ask = async (do_ask_gpt = true) => {
             await ask_gpt(message_id);
         }
     } else {
-        await lazy_scroll_to_bottom();
+        await safe_load_conversation(window.conversation_id, true);
     }
 };
 
@@ -796,6 +796,12 @@ async function add_message_chunk(message, message_id, provider, scroll, finish_m
             content_map.inner.innerHTML = markdown_render(message.preview);
             await register_message_images();
         }
+    } else if (message.type == "audio") {
+        audio = new Audio(message.audio);
+        audio.controls = true;   
+        content_map.inner.appendChild(audio);
+        audio.play();
+        generate_storage[window.conversation_id] = true;
     } else if (message.type == "content") {
         message_storage[message_id] += message.content;
         update_message(content_map, message_id, null, scroll);
@@ -819,7 +825,7 @@ async function add_message_chunk(message, message_id, provider, scroll, finish_m
     } else if (message.type == "reasoning") {
         if (!reasoning_storage[message_id]) {
             reasoning_storage[message_id] = message;
-            reasoning_storage[message_id].text = "";
+            reasoning_storage[message_id].text = message.token || "";
         } else if (message.status) {
             reasoning_storage[message_id].status = message.status;
         } else if (message.token) {
@@ -935,17 +941,12 @@ const ask_gpt = async (message_id, message_index = -1, regenerate = false, provi
                 usage = usage_storage[message_id];
                 delete usage_storage[message_id];
             }
-            usage = {
-                model: message_provider?.model,
-                provider: message_provider?.name,
-                ...usage
-            }
             // Calculate usage if we don't have it jet
             if (countTokensEnabled && document.getElementById("track_usage").checked && !usage.prompt_tokens && window.GPTTokenizer_cl100k_base) {
                 const prompt_token_model = model?.startsWith("gpt-3") ? "gpt-3.5-turbo" : "gpt-4"
                 const prompt_tokens = GPTTokenizer_cl100k_base?.encodeChat(messages, prompt_token_model).length;
                 const completion_tokens = count_tokens(message_provider?.model, message_storage[message_id])
-                    + reasoning_storage[message_id] ? count_tokens(message_provider?.model, reasoning_storage[message_id].text) : 0;
+                    + (reasoning_storage[message_id] ? count_tokens(message_provider?.model, reasoning_storage[message_id].text) : 0);
                 usage = {
                     ...usage,
                     prompt_tokens: prompt_tokens,
@@ -980,6 +981,11 @@ const ask_gpt = async (message_id, message_index = -1, regenerate = false, provi
             delete message_storage[message_id];
             // Send usage to the server
             if (document.getElementById("track_usage").checked) {
+                usage = {
+                    model: message_provider?.model,
+                    provider: message_provider?.name,
+                    ...usage
+                };
                 const user = localStorage.getItem("user");
                 if (user) {
                     usage = {user: user, ...usage};
@@ -2490,7 +2496,7 @@ async function api(ressource, args=null, files=null, message_id=null, scroll=tru
     } else if (ressource == "conversation") {
         let body = JSON.stringify(args);
         headers.accept = 'text/event-stream';
-        if (files !== null) {
+        if (files.length > 0) {
             const formData = new FormData();
             for (const file of files) {
                 formData.append('files', file)
