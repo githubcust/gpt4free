@@ -30,7 +30,7 @@ RUN mkdir -p $G4F_DIR
 COPY requirements-slim.txt $G4F_DIR
 
 # Upgrade pip for the latest features and install the project's Python dependencies.
-RUN pip install --no-cache-dir -r requirements-slim.txt pip install --no-cache-dir -r requirements-slim.txt
+RUN pip install --no-cache-dir -r requirements-slim.txt 
 
 # Copy the entire package into the container.
 ADD --chown=$G4F_USER:$G4F_USER g4f $G4F_DIR/g4f
