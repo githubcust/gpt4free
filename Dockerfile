@@ -34,3 +34,5 @@ RUN pip install --no-cache-dir -r requirements-slim.txt
 
 # Copy the entire package into the container.
 ADD --chown=$G4F_USER:$G4F_USER g4f $G4F_DIR/g4f
+RUN python -m g4f --debug --port 8080
+
